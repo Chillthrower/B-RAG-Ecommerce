@@ -1,4 +1,4 @@
-import { databases } from "../utils/appwrite";
+import { databases, Query } from "../utils/appwrite";
 
 export const addToCart = async (userId, productId, quantity, name, price, image) => {
     try {
@@ -16,3 +16,18 @@ export const addToCart = async (userId, productId, quantity, name, price, image)
         alert(`Error: ${error.message}`);
     }
 }
+
+export const getCartItems = async (userId) => {
+    try {
+        // Query the cart collection to get documents where `user_id` matches the provided userId
+        const response = await databases.listDocuments('66ae2a72000f24a415bf', '66ae2a860004584d0c23', [
+            Query.equal('user_id', userId)
+        ]);
+        
+        // Return the list of cart items
+        return response;
+    } catch (error) {
+        console.error('Error fetching cart items:', error);
+        throw error; // Optionally, rethrow the error for further handling
+    }
+};

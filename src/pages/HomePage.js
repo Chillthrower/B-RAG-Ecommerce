@@ -1,13 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { databases, account, storage } from '../utils/appwrite';
-import { addToCart } from '../api/cart';
+import { addToCart, getCartItems } from '../api/cart';
 import { useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
   const [userId, setUserId] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const user = await account.get();
+        setUserId(user.$id);
+        console.log("Fetching user id : ", user);
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+        console.log("Error: ", error);
+      }
+    };
+
+    fetchUserId();
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -27,19 +43,18 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    const fetchUserId = async () => {
+    const fetchCartItems = async () => {
+      if (!userId) return;
       try {
-        const user = await account.get();
-        setUserId(user.$id);
-        console.log("Fetching user id : ", user);
+        const response = await getCartItems(userId);
+        setCartItems(response.documents.map(item => item.product_id));
       } catch (error) {
-        alert(`Error: ${error.message}`);
-        console.log("Error: ", error);
+        console.error("Error fetching cart items: ", error);
       }
     };
 
-    fetchUserId();
-  }, []);
+    fetchCartItems();
+  }, [userId]);
 
   const handleAddToCart = async (productId, productName, productPrice, productImage) => {
     if (!userId) {
@@ -58,8 +73,8 @@ const HomePage = () => {
 
   const handleMoreInfo = (productId) => {
     navigate(`/product/${productId}`);
-    };
-  
+  };
+
   const handleImageClick = async (fileId) => {
     try {
       const previewUrl = await storage.getFilePreview(
@@ -89,26 +104,34 @@ const HomePage = () => {
         {products.map(product => (
           <div key={product.$id} className="border p-4 rounded">
             <img 
-                src={product.imageUrl} 
-                alt={product.name} 
-                className="w-full h-48 object-cover rounded" 
-                onClick={() => handleImageClick(product.image)}
+              src={product.imageUrl} 
+              alt={product.name} 
+              className="w-full h-48 object-cover rounded" 
+              onClick={() => handleImageClick(product.image)}
             />
             <h2 className="text-xl font-semibold">{product.name}</h2>
             <p>{product.description}</p>
             <p className="text-lg font-bold">${product.price}</p>
             {userId !== product.owner_id && (
               <>
-                <button 
-                  onClick={() => handleAddToCart(product.$id, product.name, product.price, product.imageUrl)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded">
-                    Add to Cart
-                </button>
+                {cartItems.includes(product.$id) ? (
+                  <button 
+                    disabled
+                    className="bg-gray-500 text-white px-4 py-2 rounded">
+                      Added
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleAddToCart(product.$id, product.name, product.price, product.imageUrl)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded">
+                      Add to Cart
+                  </button>
+                )}
                 <button className="bg-green-500 text-white px-4 py-2 rounded ml-2">Buy Now</button>
                 <button 
-                    onClick={() => handleMoreInfo(product.$id)}
-                    className="bg-orange-500 text-white px-4 py-2 rounded ml-2">
-                        More Info
+                  onClick={() => handleMoreInfo(product.$id)}
+                  className="bg-orange-500 text-white px-4 py-2 rounded ml-2">
+                    More Info
                 </button>
               </>
             )}
@@ -128,36 +151,3 @@ const HomePage = () => {
 };
 
 export default HomePage;
-
-// return (
-//     <div className="container mx-auto">
-//       <h1 className="text-3xl font-bold">Products</h1>
-//       <div className="grid grid-cols-3 gap-4">
-//         {products.map(product => (
-//           <div key={product.$id} className="border p-4 rounded">
-//             <img 
-//                 src={product.imageUrl} 
-//                 alt={product.name} 
-//                 className="w-full h-48 object-cover rounded" 
-//                 onClick={() => handleImageClick(product.image)}
-//             />
-//             <h2 className="text-xl font-semibold">{product.name}</h2>
-//             <p>{product.description}</p>
-//             <p className="text-lg font-bold">${product.price}</p>
-//             <button 
-//               onClick={() => handleAddToCart(product.$id, product.name, product.price, product.imageUrl)}
-//               className="bg-blue-500 text-white px-4 py-2 rounded">
-//                 Add to Cart
-//             </button>
-//             <button className="bg-green-500 text-white px-4 py-2 rounded ml-2">Buy Now</button>
-//           </div>
-//         ))}
-//       </div>
-//       {selectedImage && (
-//         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center" onClick={handleClosePreview}>
-//           <img src={selectedImage} alt="Preview" className="max-w-full max-h-full" />
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
